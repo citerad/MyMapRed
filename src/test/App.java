@@ -11,13 +11,16 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
 
 /**
  * The main application class.
  *
  * @author domenicocitera
  */
-public class App {
+public class App extends Configured implements Tool {
 
     private static final String root = "/user/hive/warehouse";
     private static final String dbName = "";
@@ -26,62 +29,68 @@ public class App {
     private static boolean dev = true;
 
     public static void main(String[] args) throws Exception {
-        try {
 
-            String year = null, month = null, day = null;
-            if (dev) {
-                year = "2013";
-                month = "11";
-                day = "05";
+        App driver = new App();
+        int exitCode = ToolRunner.run(driver, args);
+        System.exit(exitCode);
+    }
+
+    @Override
+    public int run(String[] args) throws Exception {
+
+        String year = null, month = null, day = null;
+        if (dev) {
+            year = "2013";
+            month = "11";
+            day = "05";
+        } else {
+            if (args.length == 3) {
+                year = args[0];
+                month = args[1];
+                day = args[2];
             } else {
-                if (args.length == 3) {
-                    year = args[0];
-                    month = args[1];
-                    day = args[2];
-                } else {
-                    throw new Exception("Bad arguments");
-                }
+                throw new Exception("Bad arguments");
             }
-
-            //CREA LISTA
-            List<Path> listpath = new ArrayList<Path>();
-            FileSystem fs = FileSystem.get(new Configuration());
-            FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
-            for (int i = 0; i < status.length; i++) {
-                FileStatus[] status2 = fs.listStatus(status[i].getPath());
-                for (int j = 0; j < status2.length; j++) {
-                    System.out.println(status2[j].getPath());
-                    listpath.add(status2[j].getPath());
-                }
-            }
-
-            // Create the job specification object
-            Job job = new Job();
-            job.setJarByClass(App.class);
-            job.setJobName("Most_Visited_Day");
-
-            // Setup input and output paths
-            //for (Path p:listpath) {
-            FileInputFormat.addInputPath(job, listpath.get(0));
-            Path outFilesPath=new Path(outRootPath+"/mes_vista_"+year+"-"+month+"-"+day);
-            fs.delete(outFilesPath, true);
-            FileOutputFormat.setOutputPath(job, outFilesPath);
-
-            // Set the Mapper and Reducer classes
-            job.setMapperClass(MyMap.class);
-            job.setReducerClass(MyRed.class);
-
-            // Specify the type of output keys and values
-            job.setOutputKeyClass(Text.class);
-            job.setOutputValueClass(IntWritable.class);
-
-            // Wait for the job to finish before terminating
-            System.exit(job.waitForCompletion(true) ? 0 : 1);
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
 
-        System.out.println("Job ended.");
+        //CREA LISTA
+        List<Path> listpath = new ArrayList<Path>();
+        FileSystem fs = FileSystem.get(new Configuration());
+        FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
+        for (int i = 0; i < status.length; i++) {
+            FileStatus[] status2 = fs.listStatus(status[i].getPath());
+            for (int j = 0; j < status2.length; j++) {
+                System.out.println(status2[j].getPath());
+                listpath.add(status2[j].getPath());
+            }
+        }
+
+        // Create the job specification object
+        Job job = new Job(getConf());
+        job.setJarByClass(App.class);
+        job.setJobName(this.getClass().getName());
+
+            // Setup input and output paths
+        //for (Path p:listpath) {
+        FileInputFormat.setInputPaths(job, listpath.get(0));
+        Path outFilesPath = new Path(outRootPath + "/mes_vista_" + year + "-" + month + "-" + day);
+
+        // Delete and create if exist
+        fs.delete(outFilesPath, true);
+        FileOutputFormat.setOutputPath(job, outFilesPath);
+
+        // Set the Mapper and Reducer classes
+        job.setMapperClass(MyMap.class);
+        job.setReducerClass(MyRed.class);
+
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(IntWritable.class);
+
+        // Specify the type of output keys and values
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+
+        boolean success = job.waitForCompletion(true);
+        return success ? 0 : 1;
     }
 }
