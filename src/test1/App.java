@@ -1,7 +1,9 @@
-package test;
+package test1;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -26,7 +28,7 @@ public class App extends Configured implements Tool {
     private static final String dbName = "";
     private static final String tableName = "bda_wikidump_dcitera_olopez";
     private static final String outRootPath = "/user/cloudera/";
-    private static boolean dev = true;
+    private static boolean dev = false;
 
     public static void main(String[] args) throws Exception {
 
@@ -39,6 +41,7 @@ public class App extends Configured implements Tool {
     public int run(String[] args) throws Exception {
 
         String year = null, month = null, day = null;
+             Pattern inputPattern = Pattern.compile("(.*)ds=20131101-(\\d{4})$");
         if (dev) {
             year = "2013";
             month = "11";
@@ -58,12 +61,16 @@ public class App extends Configured implements Tool {
         FileSystem fs = FileSystem.get(new Configuration());
         FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
         for (int i = 0; i < status.length; i++) {
-            FileStatus[] status2 = fs.listStatus(status[i].getPath());
-            for (int j = 0; j < status2.length; j++) {
-                System.out.println(status2[j].getPath());
-                listpath.add(status2[j].getPath());
+            Matcher inputMatch = inputPattern.matcher(status[i].getPath().toString());
+            if (inputMatch.matches()) {
+                FileStatus[] status2 = fs.listStatus(status[i].getPath());
+                for (int j = 0; j < status2.length; j++) {
+                    System.out.println(status2[j].getPath());
+                    listpath.add(status2[j].getPath());
+                }
             }
         }
+
 
         // Create the job specification object
         Job job = new Job(getConf());

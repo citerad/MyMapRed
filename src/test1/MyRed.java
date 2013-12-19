@@ -1,4 +1,4 @@
-package test;
+package test1;
 
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
