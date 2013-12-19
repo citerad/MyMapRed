@@ -3,6 +3,8 @@ package test1;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.hadoop.io.Text;
 
 /**
@@ -19,8 +21,8 @@ public class MyRed extends Reducer<Text, IntWritable, Text, IntWritable> {
      * @throws IOException
      * @throws InterruptedException
      */
-    private final Text maxWord = new Text();
     private int max = 0;
+    private Map<String, Integer> maxcont = new HashMap<String, Integer>();
 
     @Override
     public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
@@ -32,14 +34,18 @@ public class MyRed extends Reducer<Text, IntWritable, Text, IntWritable> {
 
             if (sum >= max) {
                 max = sum;
-                maxWord.set(key);
+                maxcont.put(key.toString(), sum);
             }
         }
     }
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
-        context.write(maxWord, new IntWritable(max));
+        for (String key : maxcont.keySet()) {
+            if (maxcont.get(key) == max) {
+                context.write(new Text(key), new IntWritable(max));
+            }
+        }
 
     }
 }
