@@ -41,7 +41,7 @@ public class App extends Configured implements Tool {
     public int run(String[] args) throws Exception {
 
         String year = null, month = null, day = null;
-             Pattern inputPattern = Pattern.compile("(.*)ds=20131101-(\\d{4})$");
+
         if (dev) {
             year = "2013";
             month = "11";
@@ -57,6 +57,7 @@ public class App extends Configured implements Tool {
         }
 
         //CREA LISTA
+        Pattern inputPattern = Pattern.compile("(.*)ds=" + year + month + day + "-(\\d{4})$");
         List<Path> listpath = new ArrayList<Path>();
         FileSystem fs = FileSystem.get(new Configuration());
         FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
@@ -71,13 +72,12 @@ public class App extends Configured implements Tool {
             }
         }
 
-
         // Create the job specification object
         Job job = new Job(getConf());
         job.setJarByClass(App.class);
         job.setJobName(this.getClass().getName());
 
-            // Setup input and output paths
+        // Setup input and output paths
         //for (Path p:listpath) {
         FileInputFormat.setInputPaths(job, listpath.get(0));
         Path outFilesPath = new Path(outRootPath + "/mes_vista_" + year + "-" + month + "-" + day);
@@ -100,4 +100,5 @@ public class App extends Configured implements Tool {
         boolean success = job.waitForCompletion(true);
         return success ? 0 : 1;
     }
+
 }

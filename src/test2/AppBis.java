@@ -3,7 +3,6 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package test2;
 
 /**
@@ -33,7 +32,6 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reducer;
 import org.apache.hadoop.mapred.Reporter;
 
-
 public class AppBis {
 
     private static final String root = "/user/hive/warehouse";
@@ -41,7 +39,6 @@ public class AppBis {
     private static final String tableName = "bda_wikidump_dcitera_olopez";
     private static final String outRootPath = "/user/cloudera/";
     private static boolean dev = false;
-
 
     public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Text, IntWritable> {
 
@@ -67,8 +64,9 @@ public class AppBis {
         @Override
         public void reduce(Text key, Iterator<IntWritable> values, OutputCollector<Text, IntWritable> output, Reporter reporter) throws IOException {
             int sum = 0;
+
             while (values.hasNext()) {
-                sum=sum+values.next().get();
+                sum = sum + values.next().get();
             }
             if (sum > 0) {
                 output.collect(key, new IntWritable(sum));
@@ -79,8 +77,7 @@ public class AppBis {
     public static void main(String[] args) throws Exception {
 
         String year = null, month = null, day = null;
-        Pattern inputPattern = Pattern.compile("(.*)ds=20131101-(\\d{4})$");
-        
+
         if (dev) {
             year = "2013";
             month = "11";
@@ -92,21 +89,6 @@ public class AppBis {
                 day = args[2];
             } else {
                 throw new Exception("Bad arguments");
-            }
-        }
-
-        //CREA LISTA
-        List<Path> listpath = new ArrayList<Path>();
-        FileSystem fs = FileSystem.get(new Configuration());
-        FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
-        for (int i = 0; i < status.length; i++) {
-            Matcher inputMatch = inputPattern.matcher(status[i].getPath().toString());
-            if (inputMatch.matches()) {
-                FileStatus[] status2 = fs.listStatus(status[i].getPath());
-                for (int j = 0; j < status2.length; j++) {
-                    System.out.println(status2[j].getPath());
-                    listpath.add(status2[j].getPath());
-                }
             }
         }
 
@@ -127,13 +109,38 @@ public class AppBis {
         job.setOutputValueClass(IntWritable.class);
 
         // Setup input and output paths
-        //for (Path p:listpath) {
-        FileInputFormat.setInputPaths(job, listpath.get(0));
+        String p = resPath(year + month + day);
+        FileInputFormat.setInputPaths(job, p);
+
         Path outFilesPath = new Path(outRootPath + "/mes_vista_" + year + "-" + month + "-" + day);
 
         // Delete and create if exist
+        FileSystem fs = FileSystem.get(new Configuration());
         fs.delete(outFilesPath, true);
         FileOutputFormat.setOutputPath(job, outFilesPath);
         JobClient.runJob(job);
+    }
+
+    public static String resPath(String ymd) throws IOException {
+        //CREA LISTA
+        Pattern inputPattern = Pattern.compile("(.*)ds=" + ymd + "-(\\d{4})$");
+        List<Path> listpath = new ArrayList<Path>();
+        FileSystem fs = FileSystem.get(new Configuration());
+        FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
+        for (int i = 0; i < status.length; i++) {
+            Matcher inputMatch = inputPattern.matcher(status[i].getPath().toString());
+            if (inputMatch.matches()) {
+                FileStatus[] status2 = fs.listStatus(status[i].getPath());
+                for (int j = 0; j < status2.length; j++) {
+                    System.out.println(status2[j].getPath());
+                    listpath.add(status2[j].getPath());
+                }
+            }
+        }
+        String pts = "";
+        for (Path p : listpath) {
+            pts = pts.concat(p.toString() + ",");
+        }
+        return pts.substring(0, (pts.length() - 1));
     }
 }
