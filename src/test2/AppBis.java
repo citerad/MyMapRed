@@ -61,6 +61,10 @@ public class AppBis {
 
     public static class Reduce extends MapReduceBase implements Reducer<Text, IntWritable, Text, IntWritable> {
 
+        private Text maxWord = new Text();
+        private int max = 0;
+
+        
         @Override
         public void reduce(Text key, Iterator<IntWritable> values, OutputCollector<Text, IntWritable> output, Reporter reporter) throws IOException {
             int sum = 0;
@@ -68,10 +72,16 @@ public class AppBis {
             while (values.hasNext()) {
                 sum = sum + values.next().get();
             }
-            if (sum > 0) {
+            if (sum > max) {
                 output.collect(key, new IntWritable(sum));
+                maxWord.set(key);
             }
         }
+//        @Override
+//        protected void cleanup(OutputCollector<Text, IntWritable> output, Reporter reporter) throws IOException {
+//            output.collect(maxWord, new IntWritable(max));
+//
+//        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -115,8 +125,7 @@ public class AppBis {
         Path outFilesPath = new Path(outRootPath + "/mes_vista_" + year + "-" + month + "-" + day);
 
         // Delete and create if exist
-        FileSystem fs = FileSystem.get(new Configuration());
-        fs.delete(outFilesPath, true);
+        FileSystem.get(new Configuration()).delete(outFilesPath, true);
         FileOutputFormat.setOutputPath(job, outFilesPath);
         JobClient.runJob(job);
     }
@@ -124,7 +133,8 @@ public class AppBis {
     public static String resPath(String ymd) throws IOException {
         //CREA LISTA
         Pattern inputPattern = Pattern.compile("(.*)ds=" + ymd + "-(\\d{4})$");
-        List<Path> listpath = new ArrayList<Path>();
+        String pts = "";
+        //List<Path> listpath = new ArrayList<Path>();
         FileSystem fs = FileSystem.get(new Configuration());
         FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
         for (int i = 0; i < status.length; i++) {
@@ -133,14 +143,15 @@ public class AppBis {
                 FileStatus[] status2 = fs.listStatus(status[i].getPath());
                 for (int j = 0; j < status2.length; j++) {
                     System.out.println(status2[j].getPath());
-                    listpath.add(status2[j].getPath());
+                    //listpath.add(status2[j].getPath());
+                    pts = pts.concat(status2[j].getPath().toString() + ",");
                 }
             }
         }
-        String pts = "";
-        for (Path p : listpath) {
-            pts = pts.concat(p.toString() + ",");
-        }
+
+            //for (Path p : listpath) {
+        //  pts = pts.concat(p.toString() + ",");
+        //}
         return pts.substring(0, (pts.length() - 1));
     }
 }

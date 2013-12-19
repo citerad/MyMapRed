@@ -1,7 +1,6 @@
 package test1;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
@@ -28,7 +27,7 @@ public class App extends Configured implements Tool {
     private static final String dbName = "";
     private static final String tableName = "bda_wikidump_dcitera_olopez";
     private static final String outRootPath = "/user/cloudera/";
-    private static boolean dev = false;
+    private static final boolean dev = false;
 
     public static void main(String[] args) throws Exception {
 
@@ -56,34 +55,19 @@ public class App extends Configured implements Tool {
             }
         }
 
-        //CREA LISTA
-        Pattern inputPattern = Pattern.compile("(.*)ds=" + year + month + day + "-(\\d{4})$");
-        List<Path> listpath = new ArrayList<Path>();
-        FileSystem fs = FileSystem.get(new Configuration());
-        FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
-        for (int i = 0; i < status.length; i++) {
-            Matcher inputMatch = inputPattern.matcher(status[i].getPath().toString());
-            if (inputMatch.matches()) {
-                FileStatus[] status2 = fs.listStatus(status[i].getPath());
-                for (int j = 0; j < status2.length; j++) {
-                    System.out.println(status2[j].getPath());
-                    listpath.add(status2[j].getPath());
-                }
-            }
-        }
-
         // Create the job specification object
         Job job = new Job(getConf());
         job.setJarByClass(App.class);
         job.setJobName(this.getClass().getName());
 
         // Setup input and output paths
-        //for (Path p:listpath) {
-        FileInputFormat.setInputPaths(job, listpath.get(0));
+        String p = resPath(year + month + day);
+        FileInputFormat.setInputPaths(job, p);
+
         Path outFilesPath = new Path(outRootPath + "/mes_vista_" + year + "-" + month + "-" + day);
 
         // Delete and create if exist
-        fs.delete(outFilesPath, true);
+        FileSystem.get(new Configuration()).delete(outFilesPath, true);
         FileOutputFormat.setOutputPath(job, outFilesPath);
 
         // Set the Mapper and Reducer classes
@@ -101,4 +85,25 @@ public class App extends Configured implements Tool {
         return success ? 0 : 1;
     }
 
+    public static String resPath(String ymd) throws IOException {
+
+        Pattern inputPattern = Pattern.compile("(.*)ds=" + ymd + "-(\\d{4})$");
+        String pts = "";
+        FileSystem fs = FileSystem.get(new Configuration());
+        FileStatus[] status = fs.listStatus(new Path(root + "/" + dbName + tableName + "/"));
+        
+        for (FileStatus statu : status) {
+            Matcher inputMatch = inputPattern.matcher(statu.getPath().toString());
+            
+            if (inputMatch.matches()) {
+                FileStatus[] status2 = fs.listStatus(statu.getPath());
+                
+                for (FileStatus status21 : status2) {
+                    System.out.println(status21.getPath()); //test file input
+                    pts = pts.concat(status21.getPath().toString() + ",");
+                }
+            }
+        }
+        return pts.substring(0, (pts.length() - 1));
+    }
 }
